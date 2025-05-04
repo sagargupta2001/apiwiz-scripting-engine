@@ -1,7 +1,6 @@
 package org.apiwiz.scriptingengine.service;
 
 import org.springframework.stereotype.Service;
-import org.apiwiz.scriptingengine.dto.ScriptRequest;
 import org.apiwiz.scriptingengine.dto.ScriptResponse;
 import org.apiwiz.scriptingengine.executor.ScriptExecutor;
 import org.apiwiz.scriptingengine.models.ScriptLanguage;
