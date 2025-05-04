@@ -14,8 +14,7 @@ public class ScriptService {
         this.executor = executor;
     }
 
-    public ScriptResponse executeScript(ScriptRequest request) {
-        ScriptLanguage language = ScriptLanguage.fromString(request.language());
-        return executor.execute(language, request.script());
+    public ScriptResponse executeScript(String language, String script) {
+        return executor.execute(ScriptLanguage.fromString(language), script);
     }
 }

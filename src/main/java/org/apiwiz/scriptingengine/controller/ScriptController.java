@@ -20,6 +20,6 @@ public class ScriptController {
 
     @PostMapping("/execute")
     public ResponseEntity<ScriptResponse> execute(@RequestBody ScriptRequest request) {
-        return ResponseEntity.ok(scriptService.executeScript(request));
+        return ResponseEntity.ok(scriptService.executeScript(request.language(), request.script()));
     }
 }
