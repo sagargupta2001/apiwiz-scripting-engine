@@ -13,8 +13,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -142,28 +140,30 @@ public class PyPIDependencyDownloader {
 
     public static List<String> getImportableModulePaths() {
         List<String> paths = new ArrayList<>();
-        File baseDir = new File(getDownloadPath());
+        collectPythonModuleDirs(new File(getDownloadPath()), paths);
+        return paths;
+    }
 
-        if (baseDir.exists()) {
-            File[] folders = baseDir.listFiles();
-            if (folders != null) {
-                for (File folder : folders) {
-                    if (folder.isDirectory()) {
-                        File[] contents = folder.listFiles();
-                        if (contents != null) {
-                            for (File file : contents) {
-                                if (file.isDirectory() || file.getName().endsWith(".py")) {
-                                    paths.add(folder.getAbsolutePath().replace("\\", "/"));
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+    private static void collectPythonModuleDirs(File dir, List<String> paths) {
+        if (dir == null || !dir.isDirectory()) return;
+
+        File[] files = dir.listFiles();
+        if (files == null) return;
+
+        boolean hasPythonCode = false;
+
+        for (File file : files) {
+            if (file.isDirectory()) {
+                collectPythonModuleDirs(file, paths); // Recursive call
+                hasPythonCode = true;
+            } else if (file.getName().endsWith(".py")) {
+                hasPythonCode = true;
             }
         }
 
-        return paths;
+        if (hasPythonCode) {
+            paths.add(dir.getAbsolutePath().replace("\\", "/"));
+        }
     }
 
 }

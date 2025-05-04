@@ -9,7 +9,9 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.io.IOAccess;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
@@ -17,17 +19,25 @@ import java.util.Set;
 public class ScriptExecutor {
 
     public ScriptResponse execute(ScriptLanguage language, String script) {
+        return executeWithContent(language, script, "script.py");
+    }
+
+    public ScriptResponse executeFromMultipartFile(ScriptLanguage language, MultipartFile file) {
         try {
-            // 1. Extract import statements
+            String scriptContent = new String(file.getBytes());
+            return executeWithContent(language, scriptContent, file.getOriginalFilename());
+        } catch (IOException e) {
+            throw new ScriptExecutionException("Failed to read uploaded file: " + e.getMessage(), e);
+        }
+    }
+
+
+    private ScriptResponse executeWithContent(ScriptLanguage language, String script, String sourceName) {
+        try {
             Set<String> imports = PythonImportExtractor.extractImports(script);
-
-            // 2. Download missing packages from PyPI
             PyPIDependencyDownloader.installDependencies(imports);
-
-            // 3. Resolve all importable paths
             List<String> modulePaths = PyPIDependencyDownloader.getImportableModulePaths();
 
-            // 4. Build sys.path bootstrap script
             StringBuilder sysPathBootstrap = new StringBuilder("import sys\nprint('Before sys.path:', sys.path)\n");
             for (String path : modulePaths) {
                 sysPathBootstrap.append("sys.path.insert(0, '").append(path).append("')\n");
@@ -38,13 +48,10 @@ public class ScriptExecutor {
                     .allowIO(IOAccess.ALL)
                     .build()) {
 
-                // 5. Inject sys.path and execute user script
                 context.eval(Source.newBuilder("python", sysPathBootstrap.toString(), "bootstrap.py").build());
-                var result = context.eval(Source.newBuilder("python", script.strip(), "script.py").build());
-
+                var result = context.eval(Source.newBuilder("python", script.strip(), sourceName).build());
                 return new ScriptResponse(result.toString(), true);
             }
-
         } catch (Exception e) {
             throw new ScriptExecutionException("Error executing script: " + e.getMessage(), e);
         }
