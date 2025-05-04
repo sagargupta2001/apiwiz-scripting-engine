@@ -11,7 +11,6 @@ public class ScriptingEngineApplication {
     public static void main(String[] args) {
         SpringApplication.run(ScriptingEngineApplication.class, args);
         try (Context context = Context.newBuilder("python")
-                /* Enabling some of these is needed for various standard library modules */
                 .allowNativeAccess(false)
                 .allowCreateThread(false)
                 .allowIO(IOAccess.newBuilder()
@@ -19,7 +18,17 @@ public class ScriptingEngineApplication {
                         .allowHostSocketAccess(false)
                         .build())
                 .build()) {
-            context.eval("python", "for i in range(8):\n    print(f'Iteration {i}')");
+            context.eval("python", "print('Hello from python')");
+        }
+        try (Context context = Context.newBuilder("js")
+                .allowNativeAccess(false)
+                .allowCreateThread(false)
+                .allowIO(IOAccess.newBuilder()
+                        .allowHostFileAccess(false)
+                        .allowHostSocketAccess(false)
+                        .build())
+                .build()) {
+            context.eval("js", "console.log('Hello from JS')");
         }
     }
 }
