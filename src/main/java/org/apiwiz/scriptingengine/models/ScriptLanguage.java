@@ -1,5 +1,7 @@
 package org.apiwiz.scriptingengine.models;
 
+import org.apiwiz.scriptingengine.exception.UnsupportedLanguageException;
+
 public enum ScriptLanguage {
     PYTHON("python"),
     JAVASCRIPT("js");
@@ -15,10 +17,11 @@ public enum ScriptLanguage {
     }
 
     public static ScriptLanguage fromString(String value) {
-        return switch (value.toLowerCase()) {
+        var language = value.toLowerCase();
+        return switch (language) {
             case "python" -> PYTHON;
             case "js", "javascript" -> JAVASCRIPT;
-            default -> throw new IllegalArgumentException("Unsupported language: " + value);
+            default ->  throw new UnsupportedLanguageException(language);
         };
     }
 }
