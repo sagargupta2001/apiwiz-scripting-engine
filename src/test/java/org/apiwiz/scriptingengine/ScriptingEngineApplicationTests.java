@@ -1,4 +1,4 @@
-package org.swacpay.scriptingengine;
+package org.apiwiz.scriptingengine;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
