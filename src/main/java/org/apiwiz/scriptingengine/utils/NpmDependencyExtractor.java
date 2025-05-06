@@ -1,23 +1,27 @@
 package org.apiwiz.scriptingengine.utils;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
+import java.util.regex.*;
 
 public class NpmDependencyExtractor {
-
-    // Regular expression for matching `require('module')` statements
-    private static final Pattern REQUIRE_PATTERN = Pattern.compile("require\\(['\"]([^'\"]+)['\"]\\)");
+    private static final Pattern REQUIRE  = Pattern.compile("require\\(['\"]([^'\"]+)['\"]\\)");
+    private static final Pattern IMPORT   = Pattern.compile(
+            "import\\s+(?:[^;]+?)\\s+from\\s+['\"]([^'\"]+)['\"]"
+    );
 
     public static Set<String> extractRequiredModules(String script) {
-        Set<String> modules = new HashSet<>();
-        Matcher matcher = REQUIRE_PATTERN.matcher(script);
+        Set<String> pkgs = new HashSet<>();
 
-        while (matcher.find()) {
-            modules.add(matcher.group(1)); // Add the module name
+        Matcher m1 = REQUIRE.matcher(script);
+        while (m1.find()) {
+            pkgs.add(m1.group(1));
         }
 
-        return modules;
+        Matcher m2 = IMPORT.matcher(script);
+        while (m2.find()) {
+            pkgs.add(m2.group(1));
+        }
+
+        return pkgs;
     }
 }
