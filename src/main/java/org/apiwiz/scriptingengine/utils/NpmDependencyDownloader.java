@@ -22,44 +22,60 @@ public class NpmDependencyDownloader {
 
         for (String pkg : packages) {
             System.out.println("Installing: " + pkg);
+            File downloadedTgz = null;
+            try {
+                String tarballUrl = getPackageDownloadUrl(pkg);
+                downloadedTgz = downloadFile(tarballUrl, DOWNLOAD_DIR);
 
-            String tarballUrl = getPackageDownloadUrl(pkg);
-            File downloadedTgz = downloadFile(tarballUrl, DOWNLOAD_DIR);
+                File targetModuleDir = new File(DOWNLOAD_DIR, pkg);
+                extractTgz(downloadedTgz, targetModuleDir);
 
-            File targetModuleDir = new File(DOWNLOAD_DIR, pkg);
-            extractTgz(downloadedTgz, targetModuleDir);
+                // Move contents from "package/" to root
+                Path packageDir = new File(targetModuleDir, "package").toPath();
+                if (Files.exists(packageDir)) {
+                    Files.walk(packageDir)
+                            .forEach(source -> {
+                                try {
+                                    Path destination = targetModuleDir.toPath().resolve(packageDir.relativize(source));
+                                    if (Files.isDirectory(source)) {
+                                        Files.createDirectories(destination);
+                                    } else {
+                                        Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
+                                    }
+                                } catch (IOException e) {
+                                    throw new UncheckedIOException(e);
+                                }
+                            });
+                    deleteDirectory(packageDir);
+                }
 
-            File pkgJsonFile = new File(targetModuleDir, "package.json");
-            if (!pkgJsonFile.exists()) throw new IOException("package.json missing in " + pkg);
+                // Read package.json after moving
+                File pkgJsonFile = new File(targetModuleDir, "package.json");
+                if (!pkgJsonFile.exists()) throw new IOException("package.json missing in " + pkg);
 
-            JSONObject pkgJson = new JSONObject(Files.readString(pkgJsonFile.toPath()));
-            String entryPath = pkgJson.optString("browser", pkgJson.optString("main", "index.js"));
-            File entryFile = new File(targetModuleDir, "package/" + entryPath);
+                JSONObject pkgJson = new JSONObject(Files.readString(pkgJsonFile.toPath()));
 
-            if (!entryFile.exists()) throw new IOException("Entry file " + entryPath + " not found for " + pkg);
+                // Correctly determine entryPath handling "browser" as object
+                Object browserObj = pkgJson.opt("browser");
+                String entryPath;
+                if (browserObj instanceof String) {
+                    entryPath = (String) browserObj;
+                } else {
+                    entryPath = pkgJson.optString("main", "index.js");
+                }
 
-            // Move contents of "package/" to module root and delete intermediate folder
-            Path packageDir = new File(targetModuleDir, "package").toPath();
-            Files.walk(packageDir)
-                    .forEach(source -> {
-                        try {
-                            Path destination = targetModuleDir.toPath().resolve(packageDir.relativize(source));
-                            if (Files.isDirectory(source)) {
-                                Files.createDirectories(destination);
-                            } else {
-                                Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
-                            }
-                        } catch (IOException e) {
-                            throw new UncheckedIOException(e);
-                        }
-                    });
-            deleteDirectory(packageDir);
+                File entryFile = new File(targetModuleDir, entryPath);
+                if (!entryFile.exists()) {
+                    throw new IOException("Entry file " + entryPath + " not found for " + pkg);
+                }
 
-            // Clean up the .tgz file
-            if (!downloadedTgz.delete())
-                System.err.println("Warning: Failed to delete " + downloadedTgz.getAbsolutePath());
-
-            System.out.println("Installed: " + pkg);
+                System.out.println("Installed: " + pkg);
+            } finally {
+                // Ensure .tgz is deleted even if errors occur
+                if (downloadedTgz != null && !downloadedTgz.delete()) {
+                    System.err.println("Warning: Failed to delete " + downloadedTgz.getAbsolutePath());
+                }
+            }
         }
     }
 
@@ -102,8 +118,8 @@ public class NpmDependencyDownloader {
                 String entryName = entry.getName();
                 if (!entryName.startsWith("package/")) continue;
 
-                String relativePath = entryName.substring("package/".length());
-                File newFile = new File(targetDir, relativePath);
+                // Preserve the "package/" prefix in the path
+                File newFile = new File(targetDir, entryName);
 
                 if (entry.isDirectory()) {
                     newFile.mkdirs();
@@ -116,7 +132,6 @@ public class NpmDependencyDownloader {
             }
         }
     }
-
 
     private static void deleteDirectory(Path dir) throws IOException {
         if (!Files.exists(dir)) return;
