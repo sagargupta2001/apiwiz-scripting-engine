@@ -32,9 +32,9 @@ public class ScriptService {
 
     private ScriptExecutor resolveExecutor(ScriptLanguage language) {
         ScriptExecutor executor = executors.get(language);
-        if (executor == null) {
+        if (executor == null)
             throw new ScriptExecutionException("Unsupported language: " + language.name(), null);
-        }
+
         return executor;
     }
 }
