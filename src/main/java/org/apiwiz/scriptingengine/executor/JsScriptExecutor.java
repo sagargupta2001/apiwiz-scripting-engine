@@ -15,8 +15,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Set;
 
 @Component
@@ -44,28 +42,11 @@ public class JsScriptExecutor implements ScriptExecutor {
 
             // 3) Create GraalVM JS context pointed at MODULE_ROOT
             try (Context context = createGraalVMContext()) {
-                // 4) Polyfill fetch() so HTTP‑based libs work inside JVM
-                context.eval("js",
-                        "globalThis.fetch = (url, opts) => {" +
-                                " const HttpClient = Java.type('java.net.http.HttpClient');" +
-                                " const HttpRequest = Java.type('java.net.http.HttpRequest');" +
-                                " const BodyHandlers = Java.type('java.net.http.HttpResponse$BodyHandlers');" +
-                                " let builder = HttpRequest.newBuilder().uri(java.net.URI.create(url));" +
-                                " let response = HttpClient.newBuilder().build()" +
-                                "                   .send(builder.build(), BodyHandlers.ofString());" +
-                                " return Promise.resolve({ " +
-                                "   text: () => response.body()," +
-                                "   json: () => JSON.parse(response.body())" +
-                                " });" +
-                                "};"
-                );
-
                 // 5) Evaluate user script as ES‑module so `import … from 'x'` works
                 Source src = Source.newBuilder("js", script.strip(), "user-script.mjs")
                         .mimeType("application/javascript+module")
                         .build();
                 Value result = context.eval(src);
-
                 return new ScriptResponse(result.toString(), true);
             }
 
@@ -96,20 +77,16 @@ public class JsScriptExecutor implements ScriptExecutor {
      *  - Resolves bare specifiers like Node.js
      */
     private Context createGraalVMContext() {
-        String absRoot = new File(MODULE_ROOT).getAbsolutePath();
-        String nodeModulesPath = new File(absRoot, "node_modules").getAbsolutePath();
-        Path cwd = Paths.get(absRoot);
-
         return Context.newBuilder("js")
                 .allowIO(IOAccess.ALL)
                 .allowAllAccess(true)
                 .allowExperimentalOptions(true)
                 .option("js.commonjs-require", "true")
-                .option("js.commonjs-require-cwd", absRoot)
+                .option("js.commonjs-require-cwd", MODULE_ROOT)
                 .option("js.esm-bare-specifier-relative-lookup", "true")
                 .option("js.esm-eval-returns-exports", "true")
-                .environment("NODE_PATH", nodeModulesPath)
-                .currentWorkingDirectory(cwd)
+                .environment("NODE_PATH", MODULE_ROOT)
                 .build();
     }
+
 }

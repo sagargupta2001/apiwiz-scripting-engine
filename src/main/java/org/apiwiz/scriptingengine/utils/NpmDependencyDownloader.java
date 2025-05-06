@@ -8,7 +8,6 @@ import org.json.JSONObject;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.channels.FileChannel;
 import java.nio.file.*;
 import java.util.*;
 
@@ -19,7 +18,7 @@ import java.util.*;
  */
 public class NpmDependencyDownloader {
 
-    public static final String DOWNLOAD_DIR   = "deps/js";                     // parent of node_modules
+    public static final String DOWNLOAD_DIR   = "deps/js";
     private static final String NODE_MODULES  = DOWNLOAD_DIR + "/node_modules";
     private static final String NPM_REGISTRY  = "https://registry.npmjs.org/%s";
 
@@ -141,6 +140,7 @@ public class NpmDependencyDownloader {
                     }
                     try (FileOutputStream fos = new FileOutputStream(out)) {
                         tais.transferTo(fos);
+                        fos.getFD().sync();
                     }
                 }
             }
